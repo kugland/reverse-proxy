@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -38,14 +37,13 @@ func handlerSwitch(res http.ResponseWriter, req *http.Request) {
 	}
 	if re.Match([]byte(req.URL.Path)) {
 		//Proxyed
-		log.Println("Encaminhando para microservico", req.URL.Path)
+		filelogger.Info("Encaminhando para microservico", req.URL.Path)
 		serveReverseProxy("http://127.0.0.1:8181", res, req)
 	} else {
 		//Requisicao normal Apache
-		log.Println("Encaminhando req para Apache", req.URL.Path)
+		filelogger.Info("Encaminhando req para Apache", req.URL.Path)
 		serveReverseProxy("http://127.0.0.1:9090/", res, req)
 	}
-	//fmt.Println("Match regexp", re.FindSubmatch([]byte(req.URL.Path)))
 }
 
 func main() {
