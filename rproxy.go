@@ -49,7 +49,18 @@ func handlerSwitch(res http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	filelogger.IniciaLogWithTag("reverse-proxy ")
+	var (
+		serverCert string
+		serverKey  string
+		logfile    string
+	)
+
+	flag.StringVar(&serverCert, "cert", "cert.pem", "Informar o caminho do arquivo do certificado")
+	flag.StringVar(&serverKey, "key", "key.pem", "Informar o arquivo key")
+	flag.StringVar(&logfile, "logfile", "~/reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
+	flag.Parse()
+
+	filelogger.StartLogWithTag(logfile, "reverse-proxy ")
 	filelogger.Info("Iniciando reverse-proxy")
 
 	http.HandleFunc("/", handlerSwitch)
@@ -60,15 +71,6 @@ func main() {
 			filelogger.Error("Servidor Http:80 erro:", err)
 		}
 	}()
-
-	var (
-		serverCert string
-		serverKey  string
-	)
-
-	flag.StringVar(&serverCert, "cert", "cert.pem", "Informar o caminho do arquivo do certificado")
-	flag.StringVar(&serverKey, "key", "key.pem", "Informar o arquivo key")
-	flag.Parse()
 
 	if _, err := os.Open(serverCert); err != nil {
 		filelogger.Error("Falha ao abrir Cert arquivo, encerrando.")
