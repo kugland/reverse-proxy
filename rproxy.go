@@ -53,10 +53,21 @@ func main() {
 		logfile    string
 	)
 
+	const (
+		appVersion = "0.1"
+	)
+
 	flag.StringVar(&serverCert, "cert", "cert.pem", "Informar o caminho do arquivo do certificado")
 	flag.StringVar(&serverKey, "key", "key.pem", "Informar o arquivo key")
 	flag.StringVar(&logfile, "logfile", "~/reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
+	askedVersion := flag.Bool("version", false, "Versão atual")
+	askedShortVersion := flag.Bool("v", false, "Versão atual")
 	flag.Parse()
+
+	if *askedVersion || *askedShortVersion {
+		fmt.Println(appVersion)
+		os.Exit(0)
+	}
 
 	filelogger.StartLogWithTag(logfile, "reverse-proxy ")
 	filelogger.Info("Iniciando reverse-proxy")
