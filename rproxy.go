@@ -49,15 +49,15 @@ func handlerSwitch(res http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	log := filelogger.IniciaLogWithTag("reverse-proxy ")
-	log.Println("Iniciando reverse-proxy")
+	filelogger.IniciaLogWithTag("reverse-proxy ")
+	filelogger.Info("Iniciando reverse-proxy")
 
 	http.HandleFunc("/", handlerSwitch)
 
 	go func() {
-		log.Println("Iniciando proxy porta 80")
+		filelogger.Info("Iniciando proxy porta 80")
 		if err := http.ListenAndServe(":80", nil); err != nil {
-			log.Println("Servidor Http:80 erro:", err)
+			filelogger.Error("Servidor Http:80 erro:", err)
 		}
 	}()
 
@@ -71,17 +71,17 @@ func main() {
 	flag.Parse()
 
 	if _, err := os.Open(serverCert); err != nil {
-		log.Println("Falha ao abrir Cert arquivo, encerrando.")
+		filelogger.Error("Falha ao abrir Cert arquivo, encerrando.")
 		os.Exit(1)
 	}
 
 	if _, err := os.Open(serverKey); err != nil {
-		log.Println("Falha ao abrir Key arquivo, encerrando.")
+		filelogger.Error("Falha ao abrir Key arquivo, encerrando.")
 		os.Exit(1)
 	}
 
-	log.Println("Iniciando proxy porta 443")
+	filelogger.Info("Iniciando proxy porta 443")
 	if err := http.ListenAndServeTLS(":443", serverCert, serverKey, nil); err != nil {
-		log.Println("Servidor Http:443 erro:", err)
+		filelogger.Error("Servidor Http:443 erro:", err)
 	}
 }
