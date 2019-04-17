@@ -31,13 +31,13 @@ func serveReverseProxy(target string, res http.ResponseWriter, req *http.Request
 
 func handlerSwitch(res http.ResponseWriter, req *http.Request) {
 	fmt.Println("handlerSwitch", req.URL.Path)
-	re, err := regexp.Compile(`\/proxy\/teste(.*)`)
+	re, err := regexp.Compile(`\/api(.*)`)
 	if err != nil {
 		fmt.Println("Falha ao compilar regexp", err)
 	}
 	if re.Match([]byte(req.URL.Path)) {
 		//Proxyed
-		filelogger.Info("Encaminhando para microservico", req.URL.Path)
+		filelogger.Info("Encaminhando para api-gateway", req.URL.Path)
 		serveReverseProxy("http://127.0.0.1:8181", res, req)
 	} else {
 		//Requisicao normal Apache
@@ -48,23 +48,25 @@ func handlerSwitch(res http.ResponseWriter, req *http.Request) {
 
 func main() {
 	var (
-		serverCert string
-		serverKey  string
-		logfile    string
+		serverCert        string
+		serverKey         string
+		logfile           string
+		askedVersion      bool
+		askedShortVersion bool
 	)
 
 	const (
-		appVersion = "0.1"
+		appVersion = "0.2"
 	)
 
 	flag.StringVar(&serverCert, "cert", "cert.pem", "Informar o caminho do arquivo do certificado")
 	flag.StringVar(&serverKey, "key", "key.pem", "Informar o arquivo key")
 	flag.StringVar(&logfile, "logfile", "~/reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
-	askedVersion := flag.Bool("version", false, "Versão atual")
-	askedShortVersion := flag.Bool("v", false, "Versão atual")
+	flag.BoolVar(&askedVersion, "version", false, "Versão atual")
+	flag.BoolVar(&askedShortVersion, "v", false, "Versão atual")
 	flag.Parse()
 
-	if *askedVersion || *askedShortVersion {
+	if askedVersion || askedShortVersion {
 		fmt.Println(appVersion)
 		os.Exit(0)
 	}
