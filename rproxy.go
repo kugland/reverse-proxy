@@ -15,7 +15,12 @@ import (
 
 func serveReverseProxy(target string, res http.ResponseWriter, req *http.Request) {
 	//parse the url
-	url, _ := url.Parse(target)
+	url, err := url.Parse(target)
+	if err != nil {
+		filelogger.Error("forwardMicroservice url.Parse:", err)
+	}
+
+	filelogger.Info("serveReverseProxy url", url)
 
 	//create de reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(url)
@@ -39,11 +44,28 @@ func handlerSwitch(res http.ResponseWriter, req *http.Request) {
 	if re.Match([]byte(req.URL.Path)) {
 		//Proxyed
 		filelogger.Info("Encaminhando para api-gateway", req.URL.Path)
-		serveReverseProxy("http://127.0.0.1:8181", res, req)
+		serveReverseProxy("http://127.0.0.1:9000", res, req)
 	} else {
 		//Requisicao normal Apache
 		filelogger.Info("Encaminhando req para Apache", req.URL.Path)
-		serveReverseProxy("http://127.0.0.1:9090/", res, req)
+		serveReverseProxy("http://127.0.0.1:8080/", res, req)
+	}
+}
+
+func startHTTPServer(serverCert string, serverKey string, tlsOption bool) {
+	if _, err := os.Open(serverCert); tlsOption && err != nil {
+		filelogger.Error("Falha ao abrir Cert arquivo, encerrando.")
+		os.Exit(1)
+	}
+
+	if _, err := os.Open(serverKey); tlsOption && err != nil {
+		filelogger.Error("Falha ao abrir Key arquivo, encerrando.")
+		os.Exit(1)
+	}
+
+	filelogger.Info("Iniciando proxy porta 443")
+	if err := http.ListenAndServeTLS(":443", serverCert, serverKey, nil); err != nil {
+		filelogger.Error("Servidor Http:443 erro:", err)
 	}
 }
 
@@ -52,11 +74,13 @@ func main() {
 		serverCert string
 		serverKey  string
 		logfile    string
+		tlsOption  bool
 	)
 
 	flag.StringVar(&serverCert, "cert", "cert.pem", "Informar o caminho do arquivo do certificado")
 	flag.StringVar(&serverKey, "key", "key.pem", "Informar o arquivo key")
-	flag.StringVar(&logfile, "logfile", "~/reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
+	flag.StringVar(&logfile, "logfile", "reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
+	flag.BoolVar(&tlsOption, "tls", false, "Habilitar servidor https porta 443")
 
 	version.ParseAll("0.3")
 
@@ -65,25 +89,26 @@ func main() {
 
 	http.HandleFunc("/", handlerSwitch)
 
-	go func() {
-		filelogger.Info("Iniciando proxy porta 80")
+	// go func() {
+	// 	filelogger.Info("Iniciando proxy porta 80")
+	// 	if err := http.ListenAndServe(":80", nil); err != nil {
+	// 		filelogger.Error("Servidor Http:80 erro:", err)
+	// 	}
+	// }()
+
+	if tlsOption {
+		go func() {
+			filelogger.Info("Iniciando proxy porta 80")
+			if err := http.ListenAndServe(":80", nil); err != nil {
+				filelogger.Error("Servidor Http:80 erro:", err)
+			}
+		}()
+		filelogger.Info("TLS https server enabled")
+		startHTTPServer(serverCert, serverKey, tlsOption)
+	} else {
+		filelogger.Info("TLS https server off")
 		if err := http.ListenAndServe(":80", nil); err != nil {
 			filelogger.Error("Servidor Http:80 erro:", err)
 		}
-	}()
-
-	if _, err := os.Open(serverCert); err != nil {
-		filelogger.Error("Falha ao abrir Cert arquivo, encerrando.")
-		os.Exit(1)
-	}
-
-	if _, err := os.Open(serverKey); err != nil {
-		filelogger.Error("Falha ao abrir Key arquivo, encerrando.")
-		os.Exit(1)
-	}
-
-	filelogger.Info("Iniciando proxy porta 443")
-	if err := http.ListenAndServeTLS(":443", serverCert, serverKey, nil); err != nil {
-		filelogger.Error("Servidor Http:443 erro:", err)
 	}
 }
