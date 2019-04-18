@@ -10,6 +10,7 @@ import (
 	"regexp"
 
 	"github.com/airtonGit/filelogger"
+	"github.com/airtonGit/version"
 )
 
 func serveReverseProxy(target string, res http.ResponseWriter, req *http.Request) {
@@ -48,28 +49,16 @@ func handlerSwitch(res http.ResponseWriter, req *http.Request) {
 
 func main() {
 	var (
-		serverCert        string
-		serverKey         string
-		logfile           string
-		askedVersion      bool
-		askedShortVersion bool
-	)
-
-	const (
-		appVersion = "0.2"
+		serverCert string
+		serverKey  string
+		logfile    string
 	)
 
 	flag.StringVar(&serverCert, "cert", "cert.pem", "Informar o caminho do arquivo do certificado")
 	flag.StringVar(&serverKey, "key", "key.pem", "Informar o arquivo key")
 	flag.StringVar(&logfile, "logfile", "~/reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
-	flag.BoolVar(&askedVersion, "version", false, "Versão atual")
-	flag.BoolVar(&askedShortVersion, "v", false, "Versão atual")
-	flag.Parse()
 
-	if askedVersion || askedShortVersion {
-		fmt.Println(appVersion)
-		os.Exit(0)
-	}
+	version.ParseAll("0.3")
 
 	filelogger.StartLogWithTag(logfile, "reverse-proxy ")
 	filelogger.Info("Iniciando reverse-proxy")
