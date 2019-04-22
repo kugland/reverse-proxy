@@ -82,33 +82,24 @@ func main() {
 	flag.StringVar(&logfile, "logfile", "reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
 	flag.BoolVar(&tlsOption, "tls", false, "Habilitar servidor https porta 443")
 
-	version.ParseAll("0.3")
+	version.ParseAll("0.4")
 
 	filelogger.StartLogWithTag(logfile, "reverse-proxy ")
 	filelogger.Info("Iniciando reverse-proxy")
 
 	http.HandleFunc("/", handlerSwitch)
 
-	// go func() {
-	// 	filelogger.Info("Iniciando proxy porta 80")
-	// 	if err := http.ListenAndServe(":80", nil); err != nil {
-	// 		filelogger.Error("Servidor Http:80 erro:", err)
-	// 	}
-	// }()
-
 	if tlsOption {
 		go func() {
-			filelogger.Info("Iniciando proxy porta 80")
-			if err := http.ListenAndServe(":80", nil); err != nil {
-				filelogger.Error("Servidor Http:80 erro:", err)
-			}
+			filelogger.Info("TLS https server enabled")
+			startHTTPServer(serverCert, serverKey, tlsOption)
 		}()
-		filelogger.Info("TLS https server enabled")
-		startHTTPServer(serverCert, serverKey, tlsOption)
 	} else {
 		filelogger.Info("TLS https server off")
-		if err := http.ListenAndServe(":80", nil); err != nil {
-			filelogger.Error("Servidor Http:80 erro:", err)
-		}
+	}
+
+	filelogger.Info("Iniciando proxy porta 80")
+	if err := http.ListenAndServe(":80", nil); err != nil {
+		filelogger.Error("Servidor Http:80 erro:", err)
 	}
 }
