@@ -82,7 +82,7 @@ func main() {
 	flag.StringVar(&logfile, "logfile", "reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
 	flag.BoolVar(&tlsOption, "tls", false, "Habilitar servidor https porta 443")
 
-	version.ParseAll("0.4")
+	version.ParseAll("0.5")
 
 	filelogger.StartLogWithTag(logfile, "reverse-proxy ")
 	filelogger.Info("Iniciando reverse-proxy")
