@@ -26,10 +26,10 @@ func serveReverseProxy(target string, res http.ResponseWriter, req *http.Request
 	proxy := httputil.NewSingleHostReverseProxy(url)
 
 	//Update the headers to allow for SSL redirection
-	req.URL.Host = url.Host
-	req.URL.Scheme = url.Scheme
+	//req.URL.Host = url.Host
+	//req.URL.Scheme = url.Scheme
 	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
-	req.Host = url.Host
+	//req.Host = url.Host
 
 	// Note that ServeHttp is non blocking and uses a go routine under the hood
 	proxy.ServeHTTP(res, req)
@@ -48,17 +48,17 @@ func handlerSwitch(res http.ResponseWriter, req *http.Request) {
 	} else {
 		//Requisicao normal Apache
 		filelogger.Info("Encaminhando req para Apache", req.URL.Path)
-		serveReverseProxy("http://127.0.0.1:8080/", res, req)
+		serveReverseProxy("http://127.0.0.1:8080", res, req)
 	}
 }
 
-func startHTTPServer(serverCert string, serverKey string, tlsOption bool) {
-	if _, err := os.Open(serverCert); tlsOption && err != nil {
+func startHTTPSServer(serverCert string, serverKey string) {
+	if _, err := os.Open(serverCert); err != nil {
 		filelogger.Error("Falha ao abrir Cert arquivo, encerrando.")
 		os.Exit(1)
 	}
 
-	if _, err := os.Open(serverKey); tlsOption && err != nil {
+	if _, err := os.Open(serverKey); err != nil {
 		filelogger.Error("Falha ao abrir Key arquivo, encerrando.")
 		os.Exit(1)
 	}
@@ -92,7 +92,7 @@ func main() {
 	if tlsOption {
 		go func() {
 			filelogger.Info("TLS https server enabled")
-			startHTTPServer(serverCert, serverKey, tlsOption)
+			startHTTPSServer(serverCert, serverKey)
 		}()
 	} else {
 		filelogger.Info("TLS https server off")
