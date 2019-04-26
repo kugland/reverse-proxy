@@ -1,0 +1,4 @@
+package: github.com/airtonGit/reverse-proxy
+import:
+- package: github.com/airtonGit/filelogger
+- package: github.com/airtonGit/version
