@@ -7,7 +7,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"regexp"
 
 	"github.com/airtonGit/filelogger"
 	"github.com/airtonGit/version"
@@ -35,22 +34,36 @@ func serveReverseProxy(target string, res http.ResponseWriter, req *http.Request
 	proxy.ServeHTTP(res, req)
 }
 
-func handlerSwitch(res http.ResponseWriter, req *http.Request) {
-	fmt.Println("handlerSwitch", req.URL.Path)
-	re, err := regexp.Compile(`\/api(.*)`)
-	if err != nil {
-		fmt.Println("Falha ao compilar regexp", err)
-	}
-	if re.Match([]byte(req.URL.Path)) {
-		//Proxyed
-		filelogger.Info("Encaminhando para api-gateway", req.URL.Path)
-		serveReverseProxy("http://127.0.0.1:9000", res, req)
-	} else {
-		//Requisicao normal Apache
-		filelogger.Info("Encaminhando req para Apache", req.URL.Path)
-		serveReverseProxy("http://127.0.0.1:8080", res, req)
-	}
+func handlerServicesAPI(res http.ResponseWriter, req *http.Request) {
+	fmt.Println("handlerServicesApi", req.URL.Path)
+	//Proxyed
+	filelogger.Info("handlerServicesApi Encaminhando para api-gateway", req.URL.Path)
+	serveReverseProxy("http://127.0.0.1:9000", res, req)
 }
+
+func handlerCropeBackend(res http.ResponseWriter, req *http.Request) {
+	fmt.Println("handlerCropeBackend", req.URL.Path)
+	//Proxyed
+	filelogger.Info("handlerServicesApi Encaminhando para api-gateway", req.URL.Path)
+	serveReverseProxy("http://127.0.0.1:8081", res, req)
+}
+
+// func handlerSwitch(res http.ResponseWriter, req *http.Request) {
+// 	fmt.Println("handlerSwitch", req.URL.Path)
+// 	re, err := regexp.Compile(`\/services-api(.*)`)
+// 	if err != nil {
+// 		fmt.Println("Falha ao compilar regexp", err)
+// 	}
+// 	if re.Match([]byte(req.URL.Path)) {
+// 		//Proxyed
+// 		filelogger.Info("Encaminhando para api-gateway", req.URL.Path)
+// 		serveReverseProxy("http://127.0.0.1:9000", res, req)
+// 	} else {
+// 		//Requisicao normal Apache
+// 		filelogger.Info("Encaminhando req para Apache", req.URL.Path)
+// 		serveReverseProxy("http://127.0.0.1:8080", res, req)
+// 	}
+// }
 
 func startHTTPSServer(serverCert string, serverKey string) {
 	if _, err := os.Open(serverCert); err != nil {
@@ -87,7 +100,17 @@ func main() {
 	filelogger.StartLogWithTag(logfile, "reverse-proxy ")
 	filelogger.Info("Iniciando reverse-proxy")
 
-	http.HandleFunc("/", handlerSwitch)
+	http.HandleFunc("/services-api/", handlerServicesAPI)
+
+	http.HandleFunc("/Souza_Cruz-Projeto_Connection-Webservice", handlerCropeBackend)
+
+	http.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+		fmt.Println("Encaminhando para apache 8080", req.URL.Path)
+
+		//Requisicao normal Apache
+		filelogger.Info("Encaminhando req para Apache", req.URL.Path)
+		serveReverseProxy("http://127.0.0.1:8080", res, req)
+	})
 
 	if tlsOption {
 		go func() {
