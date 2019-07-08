@@ -1,5 +1,9 @@
 hash: 18093409a411fc54188f68571409777f11a73e05a569f4817e300542677b165c
+<<<<<<< HEAD
 updated: 2019-07-07T21:11:03.754841-03:00
+=======
+updated: 2019-05-02T18:20:47.007096-03:00
+>>>>>>> cfee74d193480e46498d869d0c4845c832651e03
 imports:
 - name: github.com/airtonGit/filelogger
   version: d0c75d30615c2f7f3c2ffe1a430e94b70c9e1a5d
