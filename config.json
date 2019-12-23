@@ -1,20 +1,32 @@
 [{
     "servername": ["devel.oplen.com.br"],
-    "tls": true,
+    "tls": false,
     "cert": "/etc/letsencrypt/live/devel.oplen.com.br/fullchain.pem",
     "certkey": "/etc/letsencrypt/live/devel.oplen.com.br/privkey.pem",
     "locations": [
         {
             "path": "/services-api/",
-            "endpoint": "https://services:9000"
+            "endpoint": "http://api-gateway:9000"
         },
         {
             "path": "/Souza_Cruz-Projeto_Connection-Webservice",
-            "endpoint": "https://backend-php:80"
+            "endpoint": "http://backend-php:80"
+        },
+        {
+            "path": "/Souza_Cruz-Projeto_Connection-Admin",
+            "endpoint": "http://dashboard:80"
+        },
+        {
+            "path": "/Souza_Cruz-App_Produtor_Rural-Admin",
+            "endpoint": "http://produtor-rural-admin:80"
         },
         {
             "path": "/Souza_Cruz-App_Produtor_Rural-Webservice",
-            "endpoint": "https://produtor:80"
+            "endpoint": "http://produtor-rural-ws:80"
+        },
+        {
+            "path": "/Souza_Cruz-Simulador_de_Propriedade-App",
+            "endpoint": "http//simulador:80"
         }
     ]
 },
@@ -26,7 +38,7 @@
     "locations": [
         {
             "path": "/",
-            "endpoint": "http://host.docker.internal:9090"
+            "endpoint": "http://frontend:80"
         }
     ]
 }

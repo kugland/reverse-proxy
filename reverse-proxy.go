@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/airtonGit/filelogger"
@@ -27,7 +28,7 @@ type serverConfig struct {
 	} `json:"locations"`
 	TLS  bool   `json:"tls"`
 	Cert string `json:"cert"`
-	Key  string `json:"key"`
+	Key  string `json:"certkey"`
 }
 
 type reverseProxy struct {
@@ -75,34 +76,42 @@ func (r *reverseProxy) loadConfig() error {
 	return nil
 }
 
-func matchURLPart(urlPart, url string) bool {
+func stringMatch(location, url string) (bool, error) {
+	return strings.HasPrefix(url, location), nil
+}
+
+func matchURLPart(urlPart, url string) (bool, error) {
 	//primeiro que dar match atende
-	re, err := regexp.Compile(fmt.Sprintf(`%s(.*)`, urlPart))
+	re, err := regexp.Compile(fmt.Sprintf("^%s.*", urlPart))
 	if err != nil {
-		//r.log.Info(fmt.Sprintf("Falha ao compilar regexp urlPart %s, url %s, erro %s\n", urlPart, url, err.Error()))
-		return false
+		fmt.Printf("Fail compile Regexp %s", err.Error())
+		return false, err
 	}
 	if re.Match([]byte(url)) {
-		return true
+		return true, nil
 	}
 
-	return false
+	return false, nil
 }
 
 func (r *reverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) { //handlerSwitch
-	r.log.Info("handlerSwitch", req.URL)
-	//r.log.SetDebug(true)
+	r.log.Info(fmt.Sprintf("http handler req.url %s, req.URL.hostname %s, req.Host %s, req.URL.Path %s", req.URL, req.URL.Hostname(), req.Host, req.URL.Path))
+	debugMode := os.Getenv("REVERSE_PROXY_DEBUG")
+	if debugMode == "true" {
+		r.log.Info("Modo debug habilitado por variavel de ambiente")
+		r.log.SetDebug(true)
+	}
 	//Iterar endpoints names e acessar o index das demais
 	requestServed := false
 	for _, server := range r.Config {
 		//Cada server config pode ter alguns subdominios www.dominio.com ou dominio.com
 		for _, serverName := range server.ServerName {
-			r.log.Debug("Tentando config", serverName, "requisicao ", req.URL.Hostname())
-			if true == matchURLPart(serverName, req.URL.Hostname()) {
+			r.log.Debug("Tentando config", serverName, "requisicao ", req.Host)
+			if serverNameGot, _ := matchURLPart(serverName, req.Host); serverNameGot == true {
 				//Domain found, match location
 				for _, location := range server.Locations {
 					r.log.Debug("Tentando location", location.Path, "requisicao ", req.URL.Path)
-					if true == matchURLPart(location.Path, req.URL.Path) {
+					if locationGot, _ := matchURLPart(location.Path, req.URL.Path); locationGot == true {
 						r.log.Info("Encaminhando para ", location.Endpoint, req.URL.Path)
 						r.serveReverseProxy(location.Endpoint, res, req)
 						requestServed = true
@@ -121,7 +130,7 @@ func (r *reverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) { /
 func (r *reverseProxy) startHTTPSServer() {
 
 	tlsConfig := &tls.Config{}
-	tlsConfig.Certificates = make([]tls.Certificate, 1)
+	tlsConfig.Certificates = make([]tls.Certificate, 0)
 	atLastOneTLS := false
 	for _, server := range r.Config {
 		if server.TLS == false {
@@ -129,11 +138,11 @@ func (r *reverseProxy) startHTTPSServer() {
 		}
 		atLastOneTLS = true
 		if _, err := os.Open(server.Cert); err != nil {
-			r.log.Fatal("Falha ao abrir Cert arquivo, encerrando.")
+			r.log.Fatal("Falha ao abrir Cert arquivo, encerrando.", server.ServerName, server.Cert, err.Error())
 		}
 
 		if _, err := os.Open(server.Key); err != nil {
-			r.log.Fatal("Falha ao abrir Key arquivo, encerrando.")
+			r.log.Fatal("Falha ao abrir Key arquivo, encerrando.", server.ServerName, server.Key, err.Error())
 		}
 
 		r.log.Info("Iniciando proxy porta 443")
@@ -144,9 +153,9 @@ func (r *reverseProxy) startHTTPSServer() {
 			r.log.Error("não pode criar par-chave", server.ServerName)
 		}
 		tlsConfig.Certificates = append(tlsConfig.Certificates, tlsKeyPair)
-
-		tlsConfig.BuildNameToCertificate()
 	}
+
+	tlsConfig.BuildNameToCertificate()
 
 	if atLastOneTLS == false {
 		r.log.Info("No one tls server setup")
@@ -155,13 +164,13 @@ func (r *reverseProxy) startHTTPSServer() {
 
 	//http.HandleFunc("/", myHandler)
 	serverTLS := &http.Server{
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-		TLSConfig:      tlsConfig,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		//MaxHeaderBytes: 1 << 20,
+		TLSConfig: tlsConfig,
 	}
 
-	listener, err := tls.Listen("tcp", ":8443", tlsConfig)
+	listener, err := tls.Listen("tcp", ":443", tlsConfig)
 	if err != nil {
 		r.log.Fatal("Https listener", err)
 	}
@@ -170,17 +179,21 @@ func (r *reverseProxy) startHTTPSServer() {
 
 func main() {
 
-	var logfile string
-	flag.StringVar(&logfile, "logfile", "reverse-proxy.log", "Informe caminho completo com nome do arquivo de log")
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("Arquivo .env indisponivel, configuracao de variaveis ENV")
+	}
 
-	log, err := filelogger.New(logfile, "reverse-proxy ")
+	var logfile string
+	flag.StringVar(&logfile, "logfile", "", "Informe caminho completo com nome do arquivo de log")
+
+	debugMode := os.Getenv("REVERSEPROXY_DEBUG") == "true"
+	if _, got := os.LookupEnv("REVERSEPROXY_DEBUG"); got == false {
+		debugMode = false
+	}
+
+	log, err := filelogger.NewStdoutOnly("reverse-proxy ", debugMode)
 	if err != nil {
 		panic(fmt.Sprintf("Não foi possivel iniciar logger info:%s", err.Error()))
-	}
-	log.SetDebug(true)
-
-	if err := godotenv.Load(); err != nil {
-		log.Error("Arquivo .env indisponivel, configuracao de variaveis ENV")
 	}
 
 	var listenPort string
@@ -198,10 +211,19 @@ func main() {
 
 	http.Handle("/", reverseProxy)
 
-	go func() {
-		log.Info("TLS https server enabled")
-		reverseProxy.startHTTPSServer()
-	}()
+	hasTLS := false
+	for _, server := range reverseProxy.Config {
+		if server.TLS == true {
+			hasTLS = true
+			break
+		}
+	}
+	if hasTLS {
+		go func() {
+			log.Info("TLS https server enabled")
+			reverseProxy.startHTTPSServer()
+		}()
+	}
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", listenPort), nil); err != nil {
 		log.Fatal("Servidor Http:80 erro:", err.Error())
