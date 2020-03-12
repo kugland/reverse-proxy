@@ -50,8 +50,6 @@ func (r *reverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) { /
 
 	type lista []string
 
-	//var hostnames, endpointNames, endpointsPaths, endpoints lista
-
 	var endpointNames, endpointsPaths, endpoints lista
 
 	// if err := json.Unmarshal([]byte(os.Getenv("HOST_NAMES")), &hostnames); err != nil {
@@ -140,21 +138,6 @@ func main() {
 	} else {
 		log.Info("TLS https server off")
 	}
-
-	// type lista []string
-
-	// var hostnames lista
-
-	// if err := json.Unmarshal([]byte(os.Getenv("HOST_NAMES")), &hostnames); err != nil {
-	// 	erroMsg := "Erro ao decode json HOST_NAMES\n"
-	// 	log.Error(erroMsg, err.Error())
-	// }
-	// for _, host := range hostnames {
-	// 	log.Info("Listening %s:%s", host, listenPort)
-	// 	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", host, listenPort), nil); err != nil {
-	// 		log.Fatal("Servidor Http:80 erro:", err.Error())
-	// 	}
-	// }
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", listenPort), nil); err != nil {
 		log.Fatal("Servidor Http:80 erro:", err.Error())
