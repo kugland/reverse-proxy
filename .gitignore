@@ -1,3 +1,9 @@
 logger.log
 
 /vendor/*
+.env
+env-local
+reverse-proxy
+souza-crope-reverse-proxy
+test-logfile.log
+airtonoliveira-oplen-github-id_rsa.pub

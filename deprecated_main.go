@@ -2,10 +2,8 @@ package main
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -58,22 +56,27 @@ func (r *reverseProxy) serveReverseProxy(target string, res http.ResponseWriter,
 	proxy.ServeHTTP(res, req)
 }
 
-func (r *reverseProxy) loadConfig() error {
-	configFile, err := os.Open("config.json")
-	if err != nil {
-		return fmt.Errorf("Falha o abrir config.json %s", err.Error())
-	}
-	configBytes, err := ioutil.ReadAll(configFile)
-	if err != nil {
-		return fmt.Errorf("Falha ao ler config.json %s", err.Error())
-	}
-	configFile.Close()
+func (r *reverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) { //handlerSwitch
+	r.log.Info("handlerSwitch", req.URL)
 
-	if err := json.Unmarshal(configBytes, &r.Config); err != nil {
-		erroMsg := "Erro no arquivo config.json\n"
-		r.log.Error(erroMsg, err.Error())
-	}
-	return nil
+	//ENDPOINTS_NAMES
+	//ENDPOINTS_PATHS
+	//ENDPOINTS
+
+	type lista []string
+
+	var endpointNames, endpointsPaths, endpoints lista
+
+	// if err := json.Unmarshal([]byte(os.Getenv("HOST_NAMES")), &hostnames); err != nil {
+	// 	erroMsg := "Erro ao decode json HOST_NAMES\n"
+	// 	r.log.Error(erroMsg, err.Error())
+	// }
+
+	// if err := json.Unmarshal(configBytes, &r.Config); err != nil {
+	// 	erroMsg := "Erro no arquivo config.json\n"
+	// 	r.log.Error(erroMsg, err.Error())
+	// }
+	// return nil
 }
 
 func stringMatch(location, url string) (bool, error) {
@@ -92,39 +95,6 @@ func matchURLPart(urlPart, url string) (bool, error) {
 	}
 
 	return false, nil
-}
-
-func (r *reverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) { //handlerSwitch
-	r.log.Info(fmt.Sprintf("http handler req.url %s, req.URL.hostname %s, req.Host %s, req.URL.Path %s", req.URL, req.URL.Hostname(), req.Host, req.URL.Path))
-	debugMode := os.Getenv("REVERSE_PROXY_DEBUG")
-	if debugMode == "true" {
-		r.log.Info("Modo debug habilitado por variavel de ambiente")
-		r.log.SetDebug(true)
-	}
-	//Iterar endpoints names e acessar o index das demais
-	requestServed := false
-	for _, server := range r.Config {
-		//Cada server config pode ter alguns subdominios www.dominio.com ou dominio.com
-		for _, serverName := range server.ServerName {
-			r.log.Debug("Tentando config", serverName, "requisicao ", req.Host)
-			if serverNameGot, _ := matchURLPart(serverName, req.Host); serverNameGot == true {
-				//Domain found, match location
-				for _, location := range server.Locations {
-					r.log.Debug("Tentando location", location.Path, "requisicao ", req.URL.Path)
-					if locationGot, _ := matchURLPart(location.Path, req.URL.Path); locationGot == true {
-						r.log.Info("Encaminhando para ", location.Endpoint, req.URL.Path)
-						r.serveReverseProxy(location.Endpoint, res, req)
-						requestServed = true
-						//break //Encontrei handler, 1o encontrado 1o atende
-						return
-					}
-				}
-			}
-		}
-	}
-	if requestServed == false {
-		r.log.Warning(fmt.Sprintf("Request não atendido host: %s url path: %s, url:%s", req.URL.Host, req.URL.Path, req.URL.String()))
-	}
 }
 
 func (r *reverseProxy) startHTTPSServer() {
@@ -204,10 +174,10 @@ func main() {
 	log.Info("Iniciando reverse-proxy na porta ", listenPort)
 	reverseProxy := &reverseProxy{log: log}
 
-	err = reverseProxy.loadConfig()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	// err = reverseProxy.loadConfig()
+	// if err != nil {
+	// 	log.Fatal(err.Error())
+	// }
 
 	http.Handle("/", reverseProxy)
 
