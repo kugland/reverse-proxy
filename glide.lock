@@ -1,10 +1,10 @@
-hash: 18093409a411fc54188f68571409777f11a73e05a569f4817e300542677b165c
-updated: 2019-05-23T23:07:11.840375-03:00
+hash: 55822f4386c4a7c9d291e1e3aea5f911190c2585ecd6b9b29358a89d181bd163
+updated: 2020-05-18T11:41:18.2651195-03:00
 imports:
-- name: github.com/airtonGit/filelogger
-  version: d0c75d30615c2f7f3c2ffe1a430e94b70c9e1a5d
+- name: github.com/airtonGit/monologger
+  version: f87272e5930dfb1307769f6dabc04de571fe96d1
 - name: github.com/airtonGit/version
   version: 65c036c33bf25b6892a1d28adba8335345875c43
 - name: github.com/joho/godotenv
-  version: 5c0e6c6ab1a0a9ef0a8822cba3a05d62f7dad941
+  version: d6ee6871f21dd95e76563a90f522ce9fe75443f8
 testImports: []

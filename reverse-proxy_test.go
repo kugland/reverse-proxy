@@ -3,9 +3,10 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
-	"github.com/airtonGit/filelogger"
+	"github.com/airtonGit/monologger"
 	"github.com/joho/godotenv"
 )
 
@@ -31,7 +32,11 @@ func TestStringMatch(t *testing.T) {
 }
 
 func TestMain(t *testing.T) {
-	log, err := filelogger.New("test-logfile.log", "reverse-proxy ")
+	destinoArq, err := os.OpenFile("test-logfile.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		t.Error("Não pode criar/abrir log file", err.Error())
+	}
+	log, err := monologger.New(destinoArq, "reverse-proxy", true)
 	if err != nil {
 		t.Error("Não pode criar log file")
 	}
@@ -44,12 +49,8 @@ func TestMain(t *testing.T) {
 
 	var listaReq []*http.Request
 
-	listaReq = append(listaReq, httptest.NewRequest("POST", "http://www.hotelpago.com.br/", nil))
-	listaReq = append(listaReq, httptest.NewRequest("POST", "http://hotelpago.com.br/", nil))
-	listaReq = append(listaReq, httptest.NewRequest("POST", "http://devel.oplen.com.br/Souza_Cruz-Projeto_Connection-Webservice/alternativo", nil))
-	listaReq = append(listaReq, httptest.NewRequest("POST", "http://devel.oplen.com.br/Souza_Cruz-Projeto_Connection-Webservice", nil))
-	listaReq = append(listaReq, httptest.NewRequest("POST", "http://devel.oplen.com.br/Souza_Cruz-App_Produtor_Rural-Webservice", nil))
-	listaReq = append(listaReq, httptest.NewRequest("POST", "http://hml.phyllagrotech.com/", nil))
+	listaReq = append(listaReq, httptest.NewRequest("POST", "http://www.site.com.br/", nil))
+	listaReq = append(listaReq, httptest.NewRequest("POST", "http://site.com.br/", nil))
 
 	//assert.NoError(t, errReq, "Falhou NewRequest")
 

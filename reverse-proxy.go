@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/airtonGit/filelogger"
+	"github.com/airtonGit/monologger"
 	"github.com/joho/godotenv"
 )
 
@@ -32,7 +33,7 @@ type serverConfig struct {
 }
 
 type reverseProxy struct {
-	log    *filelogger.Filelogger
+	log    *monologger.Log
 	Config []serverConfig
 }
 
@@ -191,7 +192,19 @@ func main() {
 		debugMode = false
 	}
 
-	log, err := filelogger.NewStdoutOnly("reverse-proxy ", debugMode)
+	var destinoLog io.Writer
+	var err error
+	if logfile != "" {
+		destinoLog, err = os.OpenFile(logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			fmt.Println("ReverseProxy - Init fail, cannot open logfile", err.Error())
+			os.Exit(1)
+		}
+	} else {
+		destinoLog = os.Stdout
+	}
+
+	log, err := monologger.New(destinoLog, "reverse-proxy", debugMode) //filelogger.NewStdoutOnly("reverse-proxy ", debugMode)
 	if err != nil {
 		panic(fmt.Sprintf("Não foi possivel iniciar logger info:%s", err.Error()))
 	}
