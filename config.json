@@ -1,45 +1,12 @@
 [{
-    "servername": ["devel.oplen.com.br"],
+    "servername": ["hotelpago.com","www.hotelpago.com","191.252.60.69"],
     "tls": false,
-    "cert": "/etc/letsencrypt/live/devel.oplen.com.br/fullchain.pem",
-    "certkey": "/etc/letsencrypt/live/devel.oplen.com.br/privkey.pem",
-    "locations": [
-        {
-            "path": "/services-api/",
-            "endpoint": "http://api-gateway:9000"
-        },
-        {
-            "path": "/Souza_Cruz-Projeto_Connection-Webservice",
-            "endpoint": "http://backend-php:80"
-        },
-        {
-            "path": "/Souza_Cruz-Projeto_Connection-Admin",
-            "endpoint": "http://dashboard:80"
-        },
-        {
-            "path": "/Souza_Cruz-App_Produtor_Rural-Admin",
-            "endpoint": "http://produtor-rural-admin:80"
-        },
-        {
-            "path": "/Souza_Cruz-App_Produtor_Rural-Webservice",
-            "endpoint": "http://produtor-rural-ws:80"
-        },
-        {
-            "path": "/Souza_Cruz-Simulador_de_Propriedade-App",
-            "endpoint": "http//simulador:80"
-        }
-    ]
-},
-{
-    "servername": ["hml.phyllagrotech.com"],
-    "tls": false,
-    "cert": "",
-    "certkey": "",
+    "cert": "/etc/letsencrypt/live/hotelpago.com/fullchain.pem",
+    "certkey": "/etc/letsencrypt/live/hotelpago.com/privkey.pem",
     "locations": [
         {
             "path": "/",
-            "endpoint": "http://frontend:80"
+            "endpoint": "http://127.0.0.1:8080"
         }
     ]
-}
-]
+}]

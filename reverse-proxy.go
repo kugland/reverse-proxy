@@ -189,7 +189,10 @@ func main() {
 
 	debugMode := os.Getenv("REVERSEPROXY_DEBUG") == "true"
 	if _, got := os.LookupEnv("REVERSEPROXY_DEBUG"); got == false {
+		log.Println("modo debug off, REVERSEPROXY_DEBUG=true env var to activate.")
 		debugMode = false
+	} else {
+		log.Println("modo debug ON")
 	}
 
 	var destinoLog io.Writer
