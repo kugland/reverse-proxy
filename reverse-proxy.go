@@ -33,8 +33,9 @@ type serverConfig struct {
 }
 
 type reverseProxy struct {
-	log    *monologger.Log
-	Config []serverConfig
+	log       *monologger.Log
+	Config    []serverConfig
+	DebugMode bool
 }
 
 func (r *reverseProxy) serveReverseProxy(target string, res http.ResponseWriter, req *http.Request) {
@@ -50,9 +51,13 @@ func (r *reverseProxy) serveReverseProxy(target string, res http.ResponseWriter,
 	proxy := httputil.NewSingleHostReverseProxy(url)
 
 	//Update the headers to allow for SSL redirection
-	//req.URL.Host = url.Host
+	r.log.Info("req.Host", req.Host)
+	r.log.Info("req.URL.host", req.URL.Host)
+	r.log.Info("Url.Host from target", url.Host)
+	req.URL.Host = url.Host
 	req.URL.Scheme = url.Scheme
-	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
+	r.log.Info("X-Forwarded-Host = req.Host", req.Host)
+	req.Header.Set("X-Forwarded-Host", req.Host) //req.Header.Get("Host"))
 	//req.Host = url.Host
 
 	// Note that ServeHttp is non blocking and uses a go routine under the hood
@@ -97,11 +102,11 @@ func matchURLPart(urlPart, url string) (bool, error) {
 
 func (r *reverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) { //handlerSwitch
 	r.log.Info(fmt.Sprintf("http handler req.url %s, req.URL.hostname %s, req.Host %s, req.URL.Path %s", req.URL, req.URL.Hostname(), req.Host, req.URL.Path))
-	debugMode := os.Getenv("REVERSE_PROXY_DEBUG")
-	if debugMode == "true" {
-		r.log.Info("Modo debug habilitado por variavel de ambiente")
-		r.log.SetDebug(true)
-	}
+
+	// if r.DebugMode == true {
+	// 	r.log.Info("Modo debug habilitado por variavel de ambiente")
+	// 	r.log.SetDebug(true)
+	// }
 	//Iterar endpoints names e acessar o index das demais
 	requestServed := false
 	for _, server := range r.Config {
@@ -211,6 +216,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Não foi possivel iniciar logger info:%s", err.Error()))
 	}
+	log.SetDebug(true)
 
 	var listenPort string
 
