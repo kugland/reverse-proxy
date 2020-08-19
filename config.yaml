@@ -1,0 +1,12 @@
+
+proxy:
+  servername: 
+    - "hotelpago.com"
+    - "www.hotelpago.com"
+    - "191.252.60.69"
+  tls: false
+  cert: "/etc/letsencrypt/live/hotelpago.com/fullchain.pem"
+  certkey: "/etc/letsencrypt/live/hotelpago.com/privkey.pem"
+  locations: 
+        - path: "/"
+          endpoint: "http://127.0.0.1:8080"

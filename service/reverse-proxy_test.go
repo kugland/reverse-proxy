@@ -45,7 +45,7 @@ func TestMain(t *testing.T) {
 		log.Error("Arquivo .env indisponivel, configuracao de variaveis ENV")
 	}
 
-	reverseProxy := &reverseProxy{log: log}
+	reverseProxy := &ReverseProxy{log: log}
 
 	var listaReq []*http.Request
 
