@@ -1,12 +1,23 @@
 
 proxy:
-  servername: 
-    - "hotelpago.com"
-    - "www.hotelpago.com"
-    - "191.252.60.69"
-  tls: false
-  cert: "/etc/letsencrypt/live/hotelpago.com/fullchain.pem"
-  certkey: "/etc/letsencrypt/live/hotelpago.com/privkey.pem"
-  locations: 
-        - path: "/"
-          endpoint: "http://127.0.0.1:8080"
+  - servername: 
+     - "exemplo.com"
+     - "www.exemplo.com"
+     - "200.123.123.123"
+    tls: false
+    cert: "/etc/letsencrypt/live/exemplo.com/fullchain.pem"
+    certkey: "/etc/letsencrypt/live/exemplo.com/privkey.pem"
+    locations: 
+     - path: "/"
+       endpoint: "http://127.0.0.1:8080"
+  - servername: 
+     - "outroexemplo.com"
+     - "www.outroexemplo.com"
+    tls: false
+    cert: "/etc/letsencrypt/live/outroexemplo.com/fullchain.pem"
+    certkey: "/etc/letsencrypt/live/outroexemplo.com/privkey.pem"
+    locations: 
+     - path: "/"
+       endpoint: "http://container-name:80"
+     - path: "/relatorio"
+       endpoint: "http://container-relatorios:80"

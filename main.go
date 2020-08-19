@@ -69,7 +69,7 @@ func main() {
 	http.Handle("/", reverseProxy)
 
 	hasTLS := false
-	for _, server := range reverseProxy.Config {
+	for _, server := range reverseProxy.Config.List {
 		if server.TLS == true {
 			hasTLS = true
 			break

@@ -1,8 +1,8 @@
 [{
-    "servername": ["hotelpago.com","www.hotelpago.com","191.252.60.69"],
+    "servername": ["exemplo.com","www.exemplo.com","191.252.60.69"],
     "tls": false,
-    "cert": "/etc/letsencrypt/live/hotelpago.com/fullchain.pem",
-    "certkey": "/etc/letsencrypt/live/hotelpago.com/privkey.pem",
+    "cert": "/etc/letsencrypt/live/exemplo.com/fullchain.pem",
+    "certkey": "/etc/letsencrypt/live/exemplo.com/privkey.pem",
     "locations": [
         {
             "path": "/",

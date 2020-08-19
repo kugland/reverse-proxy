@@ -7,5 +7,4 @@ func TestConfigurePaths(t *testing.T) {
 	if err != nil {
 		t.Error("Falhou err", got, err)
 	}
-	t.Error("Falhei forçado", got)
 }

@@ -17,21 +17,25 @@ import (
 	"github.com/airtonGit/monologger"
 )
 
+//ServerConfig representa arquivo de configuracao
 type ServerConfig struct {
-	ServerName []string `json:"servername" yaml:"servername"`
-	//Locations  []locationConfig "json:locations"
-	Locations []struct {
-		Path     string `json:"path" yaml:"path"`
-		Endpoint string `json:"endpoint" yaml:"endpoint"`
-	} `json:"locations" yaml:"locations"`
-	TLS  bool   `json:"tls" yaml:"tls"`
-	Cert string `json:"cert" yaml:"cert"`
-	Key  string `json:"certkey" yaml:"certkey"`
+	List []struct {
+		ServerName []string `json:"servername" yaml:"servername"`
+		//Locations  []locationConfig "json:locations"
+		Locations []struct {
+			Path     string `json:"path" yaml:"path"`
+			Endpoint string `json:"endpoint" yaml:"endpoint"`
+		} `json:"locations" yaml:"locations"`
+		TLS  bool   `json:"tls" yaml:"tls"`
+		Cert string `json:"cert" yaml:"cert"`
+		Key  string `json:"certkey" yaml:"certkey"`
+	} `json:"proxy" yaml:"proxy"`
 }
 
+//ReverseProxy distribui requisicoes de acordo com os paths
 type ReverseProxy struct {
 	Log       *monologger.Log
-	Config    []ServerConfig
+	Config    ServerConfig
 	DebugMode bool
 }
 
@@ -102,7 +106,7 @@ func (r *ReverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) { /
 
 	//Iterar endpoints names e acessar o index das demais
 	requestServed := false
-	for _, server := range r.Config {
+	for _, server := range r.Config.List {
 		//Cada server config pode ter alguns subdominios www.dominio.com ou dominio.com
 		for _, serverName := range server.ServerName {
 			r.Log.Debug("Tentando config", serverName, "requisicao ", req.Host)
@@ -131,7 +135,7 @@ func (r *ReverseProxy) startHTTPSServer() {
 	tlsConfig := &tls.Config{}
 	tlsConfig.Certificates = make([]tls.Certificate, 0)
 	atLastOneTLS := false
-	for _, server := range r.Config {
+	for _, server := range r.Config.List {
 		if server.TLS == false {
 			continue
 		}
