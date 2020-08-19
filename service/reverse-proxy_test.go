@@ -1,4 +1,4 @@
-package main
+package proxy
 
 import (
 	"net/http"
@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/airtonGit/monologger"
-	"github.com/joho/godotenv"
 )
 
 // matchURLPart(urlPart, url string) bool {)
@@ -32,27 +31,18 @@ func TestStringMatch(t *testing.T) {
 }
 
 func TestMain(t *testing.T) {
-	destinoArq, err := os.OpenFile("test-logfile.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		t.Error("Não pode criar/abrir log file", err.Error())
-	}
-	log, err := monologger.New(destinoArq, "reverse-proxy", true)
+
+	log, err := monologger.New(os.Stdout, "reverse-proxy", true)
 	if err != nil {
 		t.Error("Não pode criar log file")
 	}
 
-	if err := godotenv.Load(); err != nil {
-		log.Error("Arquivo .env indisponivel, configuracao de variaveis ENV")
-	}
-
-	reverseProxy := &reverseProxy{log: log}
+	reverseProxy := &ReverseProxy{Log: log}
 
 	var listaReq []*http.Request
 
 	listaReq = append(listaReq, httptest.NewRequest("POST", "http://www.site.com.br/", nil))
 	listaReq = append(listaReq, httptest.NewRequest("POST", "http://site.com.br/", nil))
-
-	//assert.NoError(t, errReq, "Falhou NewRequest")
 
 	//We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()

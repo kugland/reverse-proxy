@@ -1,6 +1,5 @@
 logger.log
 
-/vendor/*
 .env
 env-local
 reverse-proxy

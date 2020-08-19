@@ -1,4 +1,0 @@
-package: github.com/airtonGit/reverse-proxy
-import:
-- package: github.com/airtonGit/monologger
-- package: github.com/airtonGit/version
