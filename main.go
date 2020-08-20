@@ -4,32 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/airtonGit/monologger"
-	srv "github.com/airtonGit/reverse-proxy/service"
+	srv "github.com/airtonGit/reverse-proxy/proxy"
 	"github.com/peterbourgon/ff"
-	"gopkg.in/yaml.v2"
 )
-
-//ConfigurePaths carrega yaml
-func ConfigurePaths() (srv.ServerConfig, error) {
-	configYaml, err := os.Open("config.yaml")
-	if err != nil {
-		return srv.ServerConfig{}, fmt.Errorf("Falha o abrir config.json %s", err.Error())
-	}
-	defer configYaml.Close()
-	if err != nil {
-		return srv.ServerConfig{}, fmt.Errorf("Falha ao ler config.yaml %s", err.Error())
-	}
-	config := srv.ServerConfig{}
-	err = yaml.NewDecoder(configYaml).Decode(&config)
-	if err != nil {
-		return srv.ServerConfig{}, fmt.Errorf("Erro no arquivo config.json err:%s", err.Error())
-	}
-	return config, nil
-}
 
 func main() {
 
@@ -58,31 +38,32 @@ func main() {
 	}
 	log.SetDebug(true)
 
-	log.Info("Iniciando reverse-proxy addr ", listenAddr)
-	reverseProxy := &srv.ReverseProxy{Log: log}
+	log.Info("Iniciando reverse-proxy addr ", *listenAddr)
+	reverseProxy := &srv.ReverseProxy{Log: log, Addr: *listenAddr}
 
-	// err = reverseProxy.loadConfig()
-	// if err != nil {
-	// 	log.Fatal(err.Error())
+	err = reverseProxy.LoadConfig()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	reverseProxy.Listen()
+	//http.Handle("/", reverseProxy)
+
+	// hasTLS := false
+	// for _, server := range reverseProxy.Config.List {
+	// 	if server.TLS == true {
+	// 		hasTLS = true
+	// 		break
+	// 	}
+	// }
+	// if hasTLS {
+	// 	go func() {
+	// 		log.Info("TLS https server enabled")
+	// 		//reverseProxy.startHTTPSServer()
+	// 	}()
 	// }
 
-	http.Handle("/", reverseProxy)
-
-	hasTLS := false
-	for _, server := range reverseProxy.Config.List {
-		if server.TLS == true {
-			hasTLS = true
-			break
-		}
-	}
-	if hasTLS {
-		go func() {
-			log.Info("TLS https server enabled")
-			//reverseProxy.startHTTPSServer()
-		}()
-	}
-
-	if err := http.ListenAndServe(fmt.Sprintf("%s", *listenAddr), nil); err != nil {
-		log.Fatal("Servidor Http erro:", err.Error())
-	}
+	// if err := http.ListenAndServe(fmt.Sprintf("%s", *listenAddr), nil); err != nil {
+	// 	log.Fatal("Servidor Http erro:", err.Error())
+	// }
 }

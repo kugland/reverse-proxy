@@ -2,9 +2,7 @@ package proxy
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -15,6 +13,8 @@ import (
 	"time"
 
 	"github.com/airtonGit/monologger"
+	"github.com/gorilla/mux"
+	"gopkg.in/yaml.v2"
 )
 
 //ServerConfig representa arquivo de configuracao
@@ -37,6 +37,7 @@ type ReverseProxy struct {
 	Log       *monologger.Log
 	Config    ServerConfig
 	DebugMode bool
+	Addr      string
 }
 
 func (r *ReverseProxy) serveReverseProxy(target string, res http.ResponseWriter, req *http.Request) {
@@ -65,21 +66,22 @@ func (r *ReverseProxy) serveReverseProxy(target string, res http.ResponseWriter,
 	proxy.ServeHTTP(res, req)
 }
 
-func (r *ReverseProxy) loadConfig() error {
-	configFile, err := os.Open("config.json")
+//LoadConfig carrega config
+func (r *ReverseProxy) LoadConfig() error {
+	configYaml, err := os.Open("config.yaml")
 	if err != nil {
 		return fmt.Errorf("Falha o abrir config.json %s", err.Error())
 	}
-	configBytes, err := ioutil.ReadAll(configFile)
+	defer configYaml.Close()
 	if err != nil {
-		return fmt.Errorf("Falha ao ler config.json %s", err.Error())
+		return fmt.Errorf("Falha ao ler config.yaml %s", err.Error())
 	}
-	configFile.Close()
-
-	if err := json.Unmarshal(configBytes, &r.Config); err != nil {
-		erroMsg := "Erro no arquivo config.json\n"
-		r.Log.Error(erroMsg, err.Error())
+	config := ServerConfig{}
+	err = yaml.NewDecoder(configYaml).Decode(&config)
+	if err != nil {
+		return fmt.Errorf("Erro no arquivo config.json err:%s", err.Error())
 	}
+	r.Config = config
 	return nil
 }
 
@@ -101,36 +103,45 @@ func matchURLPart(urlPart, url string) (bool, error) {
 	return false, nil
 }
 
-func (r *ReverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) { //handlerSwitch
-	r.Log.Info(fmt.Sprintf("http handler req.url %s, req.URL.hostname %s, req.Host %s, req.URL.Path %s", req.URL, req.URL.Hostname(), req.Host, req.URL.Path))
-
-	//Iterar endpoints names e acessar o index das demais
-	requestServed := false
-	for _, server := range r.Config.List {
-		//Cada server config pode ter alguns subdominios www.dominio.com ou dominio.com
-		for _, serverName := range server.ServerName {
-			r.Log.Debug("Tentando config", serverName, "requisicao ", req.Host)
-			if serverNameGot, _ := matchURLPart(serverName, req.Host); serverNameGot == true {
-				//Domain found, match location
-				for _, location := range server.Locations {
-					r.Log.Debug("Tentando location", location.Path, "requisicao ", req.URL.Path)
-					if locationGot, _ := matchURLPart(location.Path, req.URL.Path); locationGot == true {
-						r.Log.Info("Encaminhando para ", location.Endpoint, req.URL.Path)
-						r.serveReverseProxy(location.Endpoint, res, req)
-						requestServed = true
-						//break //Encontrei handler, 1o encontrado 1o atende
-						return
-					}
-				}
+//Listen serve http e https
+func (r *ReverseProxy) Listen() {
+	srv := http.Server{
+		Addr:              r.Addr,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+	}
+	hasTLS := false
+	router := mux.NewRouter()
+	for _, host := range r.Config.List {
+		if host.TLS {
+			hasTLS = true
+		}
+		for _, alias := range host.ServerName {
+			for _, path := range host.Locations {
+				sub := router.Host(alias).Subrouter()
+				sub.HandleFunc(path.Path, func(w http.ResponseWriter, req *http.Request) {
+					r.Log.Info("Encaminhando para ", path.Endpoint, req.URL.Path)
+					r.serveReverseProxy(path.Endpoint, w, req)
+				})
 			}
 		}
 	}
-	if requestServed == false {
-		r.Log.Warning(fmt.Sprintf("Request não atendido host: %s url path: %s, url:%s", req.URL.Host, req.URL.Path, req.URL.String()))
+
+	if hasTLS {
+		go func() {
+			r.StartHTTPSServer()
+		}()
 	}
+
+	if err := srv.ListenAndServe(); err != nil {
+		log.Fatal("Servidor Http erro:", err.Error())
+	}
+
 }
 
-func (r *ReverseProxy) startHTTPSServer() {
+//StartHTTPSServer https server
+func (r *ReverseProxy) StartHTTPSServer() error {
 
 	tlsConfig := &tls.Config{}
 	tlsConfig.Certificates = make([]tls.Certificate, 0)
@@ -142,10 +153,12 @@ func (r *ReverseProxy) startHTTPSServer() {
 		atLastOneTLS = true
 		if _, err := os.Open(server.Cert); err != nil {
 			r.Log.Fatal("Falha ao abrir Cert arquivo, encerrando.", server.ServerName, server.Cert, err.Error())
+			return err
 		}
 
 		if _, err := os.Open(server.Key); err != nil {
 			r.Log.Fatal("Falha ao abrir Key arquivo, encerrando.", server.ServerName, server.Key, err.Error())
+			return err
 		}
 
 		r.Log.Info("Iniciando proxy porta 443")
@@ -154,6 +167,7 @@ func (r *ReverseProxy) startHTTPSServer() {
 		tlsKeyPair, err := tls.LoadX509KeyPair(server.Cert, server.Key)
 		if err != nil {
 			r.Log.Error("não pode criar par-chave", server.ServerName)
+			return err
 		}
 		tlsConfig.Certificates = append(tlsConfig.Certificates, tlsKeyPair)
 	}
@@ -162,10 +176,9 @@ func (r *ReverseProxy) startHTTPSServer() {
 
 	if atLastOneTLS == false {
 		r.Log.Info("No one tls server setup")
-		return
+		return nil
 	}
 
-	//http.HandleFunc("/", myHandler)
 	serverTLS := &http.Server{
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -178,4 +191,5 @@ func (r *ReverseProxy) startHTTPSServer() {
 		r.Log.Fatal("Https listener", err)
 	}
 	log.Fatal(serverTLS.Serve(listener))
+	return nil
 }
