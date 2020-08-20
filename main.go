@@ -47,23 +47,4 @@ func main() {
 	}
 
 	reverseProxy.Listen()
-	//http.Handle("/", reverseProxy)
-
-	// hasTLS := false
-	// for _, server := range reverseProxy.Config.List {
-	// 	if server.TLS == true {
-	// 		hasTLS = true
-	// 		break
-	// 	}
-	// }
-	// if hasTLS {
-	// 	go func() {
-	// 		log.Info("TLS https server enabled")
-	// 		//reverseProxy.startHTTPSServer()
-	// 	}()
-	// }
-
-	// if err := http.ListenAndServe(fmt.Sprintf("%s", *listenAddr), nil); err != nil {
-	// 	log.Fatal("Servidor Http erro:", err.Error())
-	// }
 }
