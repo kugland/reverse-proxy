@@ -3,13 +3,12 @@ package proxy
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/airtonGit/monologger"
@@ -17,19 +16,22 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+//ProxyItem grupo de dominios com mesmo certificado TLS e paths
+type ProxyItem struct {
+	ServerName []string `json:"servername" yaml:"servername"`
+	//Locations  []locationConfig "json:locations"
+	Locations []struct {
+		Path     string `json:"path" yaml:"path"`
+		Endpoint string `json:"endpoint" yaml:"endpoint"`
+	} `json:"locations" yaml:"locations"`
+	TLS  bool   `json:"tls" yaml:"tls"`
+	Cert string `json:"cert" yaml:"cert"`
+	Key  string `json:"certkey" yaml:"certkey"`
+}
+
 //ServerConfig representa arquivo de configuracao
 type ServerConfig struct {
-	List []struct {
-		ServerName []string `json:"servername" yaml:"servername"`
-		//Locations  []locationConfig "json:locations"
-		Locations []struct {
-			Path     string `json:"path" yaml:"path"`
-			Endpoint string `json:"endpoint" yaml:"endpoint"`
-		} `json:"locations" yaml:"locations"`
-		TLS  bool   `json:"tls" yaml:"tls"`
-		Cert string `json:"cert" yaml:"cert"`
-		Key  string `json:"certkey" yaml:"certkey"`
-	} `json:"proxy" yaml:"proxy"`
+	List []ProxyItem `json:"proxy" yaml:"proxy"`
 }
 
 //ReverseProxy distribui requisicoes de acordo com os paths
@@ -38,6 +40,8 @@ type ReverseProxy struct {
 	Config    ServerConfig
 	DebugMode bool
 	Addr      string
+	Srv       *http.Server
+	TLS       bool
 }
 
 func (r *ReverseProxy) serveReverseProxy(target string, res http.ResponseWriter, req *http.Request) {
@@ -48,7 +52,6 @@ func (r *ReverseProxy) serveReverseProxy(target string, res http.ResponseWriter,
 	}
 
 	r.Log.Info("serveReverseProxy url", url)
-
 	//create de reverse proxy
 	proxy := httputil.NewSingleHostReverseProxy(url)
 
@@ -59,25 +62,16 @@ func (r *ReverseProxy) serveReverseProxy(target string, res http.ResponseWriter,
 	req.URL.Host = url.Host
 	req.URL.Scheme = url.Scheme
 	r.Log.Info("X-Forwarded-Host = req.Host", req.Host)
-	req.Header.Set("X-Forwarded-Host", req.Host) //req.Header.Get("Host"))
-	//req.Host = url.Host
+	req.Header.Set("X-Forwarded-Host", req.Host)
 
 	// Note that ServeHttp is non blocking and uses a go routine under the hood
 	proxy.ServeHTTP(res, req)
 }
 
 //LoadConfig carrega config
-func (r *ReverseProxy) LoadConfig() error {
-	configYaml, err := os.Open("config.yaml")
-	if err != nil {
-		return fmt.Errorf("Falha o abrir config.json %s", err.Error())
-	}
-	defer configYaml.Close()
-	if err != nil {
-		return fmt.Errorf("Falha ao ler config.yaml %s", err.Error())
-	}
+func (r *ReverseProxy) LoadConfig(configYaml io.ReadCloser) error {
 	config := ServerConfig{}
-	err = yaml.NewDecoder(configYaml).Decode(&config)
+	err := yaml.NewDecoder(configYaml).Decode(&config)
 	if err != nil {
 		return fmt.Errorf("Erro no arquivo config.json err:%s", err.Error())
 	}
@@ -85,59 +79,56 @@ func (r *ReverseProxy) LoadConfig() error {
 	return nil
 }
 
-func stringMatch(location, url string) (bool, error) {
-	return strings.HasPrefix(url, location), nil
+func (r *ReverseProxy) makeHandler(path, endpoint string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		r.Log.Info("Encaminhando para ", path, endpoint, req.URL.Path)
+		r.serveReverseProxy(endpoint, w, req)
+	}
 }
 
-func matchURLPart(urlPart, url string) (bool, error) {
-	//primeiro que dar match atende
-	re, err := regexp.Compile(fmt.Sprintf("^%s.*", urlPart))
-	if err != nil {
-		fmt.Printf("Fail compile Regexp %s", err.Error())
-		return false, err
-	}
-	if re.Match([]byte(url)) {
-		return true, nil
-	}
+//Setup serve http e https
+func (r *ReverseProxy) Setup() {
 
-	return false, nil
-}
-
-//Listen serve http e https
-func (r *ReverseProxy) Listen() {
-	srv := http.Server{
+	router := mux.NewRouter()
+	for _, host := range r.Config.List {
+		if host.TLS {
+			r.TLS = true
+		}
+		for _, alias := range host.ServerName {
+			sub := router.Host(alias).Subrouter()
+			for _, path := range host.Locations {
+				r.Log.Debug("Adicionando regra", alias, path.Path)
+				sub.PathPrefix(path.Path).HandlerFunc(r.makeHandler(path.Path, path.Endpoint))
+			}
+		}
+	}
+	r.Srv = &http.Server{
+		Handler:           router,
 		Addr:              r.Addr,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 	}
-	hasTLS := false
-	router := mux.NewRouter()
-	for _, host := range r.Config.List {
-		if host.TLS {
-			hasTLS = true
-		}
-		for _, alias := range host.ServerName {
-			for _, path := range host.Locations {
-				sub := router.Host(alias).Subrouter()
-				sub.HandleFunc(path.Path, func(w http.ResponseWriter, req *http.Request) {
-					r.Log.Info("Encaminhando para ", path.Endpoint, req.URL.Path)
-					r.serveReverseProxy(path.Endpoint, w, req)
-				})
-			}
-		}
-	}
+}
 
-	if hasTLS {
+func (r *ReverseProxy) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	r.Srv.Handler.ServeHTTP(res, req)
+}
+
+//Listen aguarda clientes, precisa ser configurado com Setup
+func (r *ReverseProxy) Listen() {
+	if r.TLS {
 		go func() {
-			r.StartHTTPSServer()
+			err := r.StartHTTPSServer()
+			if err != nil {
+				r.Log.Error("Https Server error", err)
+			}
 		}()
 	}
 
-	if err := srv.ListenAndServe(); err != nil {
+	if err := r.Srv.ListenAndServe(); err != nil {
 		log.Fatal("Servidor Http erro:", err.Error())
 	}
-
 }
 
 //StartHTTPSServer https server
@@ -180,6 +171,7 @@ func (r *ReverseProxy) StartHTTPSServer() error {
 	}
 
 	serverTLS := &http.Server{
+		Handler:      r.Srv.Handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		//MaxHeaderBytes: 1 << 20,

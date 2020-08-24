@@ -12,11 +12,12 @@ import (
 )
 
 func main() {
-
-	fs := flag.NewFlagSet("my-program", flag.ExitOnError)
+	fmt.Println("Reverse-Proxy 2.0.6 (pathprefix)")
+	fs := flag.NewFlagSet("reverse-proxy", flag.ExitOnError)
 	var (
-		listenAddr = fs.String("listen-addr", "localhost:8080", "listen address")
-		debugMode  = fs.Bool("debug", false, "log debug information")
+		listenAddr    = fs.String("listen-addr", ":8080", "listen address")
+		debugMode     = fs.Bool("debug", false, "log debug information")
+		proxyConfFile = fs.String("proxy-conf-file", "config.yaml", "proxy rules")
 		// _          = fs.String("config", "", "config file (optional)")
 	)
 
@@ -36,15 +37,19 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Não foi possivel iniciar logger info:%s", err.Error()))
 	}
-	log.SetDebug(true)
+	log.SetDebug(*debugMode)
 
 	log.Info("Iniciando reverse-proxy addr ", *listenAddr)
 	reverseProxy := &srv.ReverseProxy{Log: log, Addr: *listenAddr}
-
-	err = reverseProxy.LoadConfig()
+	configYaml, err := os.Open(*proxyConfFile)
+	if err != nil {
+		log.Error(fmt.Sprintf("Falha o abrir %s %s", *proxyConfFile, err.Error()))
+	}
+	defer configYaml.Close()
+	err = reverseProxy.LoadConfig(configYaml)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-
+	reverseProxy.Setup()
 	reverseProxy.Listen()
 }

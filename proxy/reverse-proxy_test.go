@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,40 +10,31 @@ import (
 	"github.com/airtonGit/monologger"
 )
 
-// matchURLPart(urlPart, url string) bool {)
-func TestMatchURLPart(t *testing.T) {
-	got, err := matchURLPart("/dashboard", "/api/dashboard/alguma/coisa")
-	if err != nil {
-		t.Error("Falha", err.Error())
-	}
-	if got == false {
-		t.Error("Não pode dar match em /")
-	}
-}
-
-func TestStringMatch(t *testing.T) {
-	got, err := stringMatch("/", "/api/dashboard/alguma/coisa")
-	if err != nil {
-		t.Error("Falha", err.Error())
-	}
-	if got == false {
-		t.Error("Não pode dar match em /")
-	}
-}
-
-func TestMain(t *testing.T) {
+func TestServeHTTP(t *testing.T) {
 
 	log, err := monologger.New(os.Stdout, "reverse-proxy", true)
 	if err != nil {
-		t.Error("Não pode criar log file")
+		t.Error("Não pode criar log file", err)
 	}
 
 	reverseProxy := &ReverseProxy{Log: log}
+	configYaml, err := os.Open("./../config.yaml")
+	if err != nil {
+		log.Error(fmt.Sprintf("Falha o abrir config.json %s", err.Error()))
+	}
+	defer configYaml.Close()
+	err = reverseProxy.LoadConfig(configYaml)
+	if err != nil {
+		t.Error("Não pode carregar config", err)
+	}
+	reverseProxy.Setup()
 
 	var listaReq []*http.Request
 
-	listaReq = append(listaReq, httptest.NewRequest("POST", "http://www.site.com.br/", nil))
-	listaReq = append(listaReq, httptest.NewRequest("POST", "http://site.com.br/", nil))
+	listaReq = append(listaReq, httptest.NewRequest("POST", "http://www.exemplo.com/", nil))
+	listaReq = append(listaReq, httptest.NewRequest("POST", "http://www.exemplo.com/testepath", nil))
+	listaReq = append(listaReq, httptest.NewRequest("POST", "http://outroexemplo.com.br/", nil))
+	listaReq = append(listaReq, httptest.NewRequest("POST", "http://outroexemplo.com.br/relatorio", nil))
 
 	//We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	rr := httptest.NewRecorder()

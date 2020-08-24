@@ -9,7 +9,9 @@ proxy:
     certkey: "/etc/letsencrypt/live/exemplo.com/privkey.pem"
     locations: 
      - path: "/"
-       endpoint: "http://127.0.0.1:8080"
+       endpoint: "http://primeiro:8080"
+     - path: "/testepath"
+       endpoint: "http://segundo:80"
   - servername: 
      - "outroexemplo.com"
      - "www.outroexemplo.com"
