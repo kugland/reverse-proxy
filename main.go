@@ -11,6 +11,20 @@ import (
 	"github.com/peterbourgon/ff"
 )
 
+func makeProxy(confFilename, listenAddr string, log *monologger.Log) (*srv.ReverseProxy, error) {
+	proxy := &srv.ReverseProxy{Log: log, Addr: listenAddr}
+	configYaml, err := os.Open(confFilename)
+	if err != nil {
+		return nil, err
+	}
+	defer configYaml.Close()
+	err = proxy.LoadConfig(configYaml)
+	if err != nil {
+		return nil, err
+	}
+	return proxy, nil
+}
+
 func main() {
 	fmt.Println("Reverse-Proxy 2.0.6 (pathprefix)")
 	fs := flag.NewFlagSet("reverse-proxy", flag.ExitOnError)
@@ -27,10 +41,8 @@ func main() {
 		// ff.WithConfigFileParser(ff.PlainParser),
 	)
 
-	if !*debugMode {
-		log.Println("modo debug off, REVERSEPROXY_DEBUG=true env var to activate.")
-	} else {
-		log.Println("modo debug ON")
+	if *debugMode {
+		log.Println("debug mode ON")
 	}
 
 	log, err := monologger.New(os.Stdout, "reverse-proxy", *debugMode)
@@ -40,15 +52,9 @@ func main() {
 	log.SetDebug(*debugMode)
 
 	log.Info("Iniciando reverse-proxy addr ", *listenAddr)
-	reverseProxy := &srv.ReverseProxy{Log: log, Addr: *listenAddr}
-	configYaml, err := os.Open(*proxyConfFile)
+	reverseProxy, err := makeProxy(*proxyConfFile, *listenAddr, log)
 	if err != nil {
-		log.Error(fmt.Sprintf("Falha o abrir %s %s", *proxyConfFile, err.Error()))
-	}
-	defer configYaml.Close()
-	err = reverseProxy.LoadConfig(configYaml)
-	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal(fmt.Sprintf("Falha o abrir %s %s", *proxyConfFile, err.Error()))
 	}
 	reverseProxy.Setup()
 	reverseProxy.Listen()
